@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2016 by kmui2 (http://jsbin.com/kabeyiz/22/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html>
+<head>
+<meta name="description" content="Graphics Town">
+<meta name="WebGL" content="WebGL">
+  <meta charset="utf-8">
+  <title>JS Bin</title>
+  <script src="https://graphics.cs.wisc.edu/JS/twgl-full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.3.2/gl-matrix.js"></script>
+</head>
+<body onload="start()">
+<img id="sky" width="0" height="0" src="http://www.aurorasentinel.com/asuplads/Fotolia-64898668-Subscription-Monthly-L.jpg">
+<canvas id="mycanvas" width="400" height="400"></canvas>
+<script id="jsbin-javascript">
+
+function setup() {
+  "use strict";
+
+  // first we need to get the canvas and make an OpenGL context
+	// in practice, you need to do error checking
+  var canvas = document.getElementById("mycanvas");
+  var gl =twgl.getWebGLContext(canvas);
+  var m4 = twgl.m4;
+  var v3 = twgl.v3;  
+  var p = twgl.primitives;
+  var truncatedConeBuffer = p.createTruncatedConeBufferInfo(gl,1,0.5,1,10,10);
+  var torusBuffer = p.createTorusBufferInfo(gl,1,0.5,10,10);
+  var planeBuffer = p.createPlaneBufferInfo(gl);
+  var cresentBuffer = p.createCresentBufferInfo(gl,2,1,0.1,1,10,2);
+  var discBuffer = p.createDiscBufferInfo(gl,1,10,10,0.5,10);
+  var sphereBuffer = p.createSphereBufferInfo(gl,1,10,10);
+  var cubeBuffer = p.createCubeBufferInfo(gl);
+  var cylinderBuffer = p.createCylinderBufferInfo(gl,1,1,10,10);
+
+  var forward = 0;
+  var turn = 0;
+  var lift = 0;
+  var x = 0;
+  var y = 0;
+  var z = 10;
+  
+  var counter = 0;
+  var time = 0.0;      
+  var pattern = true;
+  var Tcamera
+  var Tprojection = m4.perspective(Math.PI/3,1,1,400);
+  var Tmcp
+  var buffers
+  var coord
+  var matrixStack = [];
+  var Tmc = m4.identity();
+  var Tmodel = m4.identity();
+  var rotator = new SimpleRotator(canvas);
+  rotator.setViewDistance(10);
+  var inColor = [1.0,0.0,0.0]
+  var texture = false;
+  
+  var control = document.getElementById('control');
+  
+  var view = document.getElementById('view');
+  
+  //pattern is actually the pause/play button
+  var togglePattern = document.getElementById('pattern');
+  var reset = document.getElementById('reset');
+  
+  //Rotate
+  var slider2 = document.getElementById('slider2');
+  slider2.value = -1;
+  
+  //Rotate
+  var sliderDay = document.getElementById('day');
+  sliderDay.value = 0;
+  
+  //**Translating**//                
+  //X
+  var sliderX = document.getElementById('sliderX');
+  sliderX.value = 0;
+                  
+  //Y
+  var sliderY = document.getElementById('sliderY');
+  sliderY.value = 0;
+                  
+  //Z
+  var sliderZ = document.getElementById('sliderZ');
+  sliderZ.value = 0;
+                  
+  //**Scaling**//                
+  //X
+  var sliderScaleX = document.getElementById('sliderScaleX');
+  sliderScaleX.value = 5;
+                  
+  //Y
+  var sliderScaleY = document.getElementById('sliderScaleY');
+  sliderScaleY.value = 5;
+                  
+  //Z
+  var sliderScaleZ = document.getElementById('sliderScaleZ');
+  sliderScaleZ.value = 5;
+  
+  //Examine
+  var checkbox = document.getElementById('examine');
+                  
+
+  // with twgl, the shaders get moved to the html file
+  var shaders = twgl.createProgramInfo(gl, ["vs", "fs"]);// let's define the vertex positions
+
+  
+    var octagonVertexPos = [
+    //front
+      //first row
+         -1.0,  1.0 + 2/Math.sqrt(2),  1.0,  //0
+        1.0,  1.0 + 2/Math.sqrt(2),  1.0,    //1
+      //second row
+         -1.0 - 2/Math.sqrt(2),  1.0,  1.0,  //2
+         -1.0, 1.0,  1.0,                    //3
+        1.0,  1.0,  1.0,                     //4
+         1.0+2/Math.sqrt(2),  1.0,  1.0,     //5
+      //third row
+        -1.0-2/Math.sqrt(2),-1.0,1.0,        //6
+        -1.0,-1.0,1.0,                       //7
+        1.0,-1.0,1.0,                        //8
+        1.0+2/Math.sqrt(2),-1.0,1.0,         //9
+      //fourth row
+        -1.0,-1.0-2/Math.sqrt(2),1.0,        //10
+        1.0,-1.0-2/Math.sqrt(2),1.0,         //11
+    
+    //back
+      //first row
+         -1.0,  1.0 + 2/Math.sqrt(2),  -1.0,  //12
+        1.0,  1.0 + 2/Math.sqrt(2),  -1.0,    //13
+      //second row
+         -1.0 - 2/Math.sqrt(2),  1.0,  -1.0,  //14
+         -1.0, 1.0,  -1.0,                    //15
+        1.0,  1.0,  -1.0,                     //16
+         1.0+2/Math.sqrt(2),  1.0,  -1.0,     //17
+      //third row
+        -1.0-2/Math.sqrt(2),-1.0,-1.0,        //18
+        -1.0,-1.0,-1.0,                       //19
+        1.0,-1.0,-1.0,                        //20
+        1.0+2/Math.sqrt(2),-1.0,-1.0,         //21
+      //fourth row
+        -1.0,-1.0-2/Math.sqrt(2),-1.0,        //22
+       1.0,-1.0-2/Math.sqrt(2),-1.0,         //23 
+   ];  
+  var octagonTriangleIndices = [
+    3,0,2, 4,1,0, 0,3,4, 1,4,5, 2,6,3, 7,3,6, 7,4,3, 7,8,4, 8,5,4, 5,8,9, 10,7,6, 10,8,7, 10,11,8, 11,9,8,
+    0,1,12, 13,12,1, 17,13,1, 17,1,5, 21,17,5, 21,5,9, 23,21,9, 23,9,11, 10,22,23, 23,11,10, 6,18,22, 22,10,6, 14,18,6, 6,2,14, 12,14,2, 2,0,12,
+    12,13,16, 16,15,12, 13,17,16, 16,17,21, 21,20,16, 20,21,23, 23,22,20, 22,19,20, 18,19,22, 18,14,15, 15,19,18, 15,16,20, 20,19,15, 15,14,12
+    
+  ];
+      var octagonVertexNormals = [
+    //front
+      //first row
+         -1.0, 1.0, 1.0, //0
+        1.0, 1.0, 1.0,   //1
+      //second row
+        -1.0, 1.0, 1.0,  //2
+        0.0, 0.0, 1.0,   //3
+        0.0, 0.0, 1.0,   //4
+        1.0, 1.0, 1.0,   //5
+      //third row
+        -1.0, 1.0, 1.0,  //6
+        0.0, 0.0, 1.0,   //7
+        0.0, 0.0, 1.0,   //8
+        1.0, -1.0, 1.0,  //9
+      //fourth row
+        -1.0, -1.0, 1.0, //10
+        1.0, -1.0, 1.0,  //11
+    
+    //back
+      //first row
+         -1.0, 1.0, -1.0,  //12
+        1.0, 1.0, -1.0,   //13
+      //second row
+        -1.0, 1.0, -1.0,  //14
+        0.0, 0.0, -1.0,   //15
+        0.0, 0.0, -1.0,   //16
+        1.0, 1.0, -1.0,   //17
+      //third row
+        -1.0, 1.0, -1.0,  //18
+        0.0, 0.0, -1.0,   //19
+        0.0, 0.0, -1.0,   //20
+        1.0, -1.0, -1.0,  //21
+      //fourth row
+        -1.0, -1.0, -1.0, //22
+        1.0, -1.0, -1.0,  //23
+  ];
+  var arrays = {position:octagonVertexPos, 
+                 indices:octagonTriangleIndices,
+                     inColor:inColor,
+                       normal: octagonVertexNormals};
+    var octagonBuffer = twgl.createBufferInfoFromArrays(gl, arrays);
+  
+    var diamondVertexPos = [
+    //top
+      0.0, 1, 0.0,    //0
+    //bottom square
+      -0.5, 0, 0.5,  //1
+      -0.5, 0, -0.5, //2
+      0.5, 0, 0.5,   //3
+      0.5, 0, -0.5,   //4
+    //bottom
+      0.0, -1, 0.0, //5
+   ];  
+  var diamondTriangleIndices = [
+      3,1,5, 4,3,5, 2,4,5, 2,5,1, 1,3,0, 3,4,0, 4,2,0, 1,0,2,
+  ];
+    var diamondVertexNormals = [
+      0.0, 1.0, 0.0,   //0
+      -1.0, 0.0, 1.0, //1
+      -1.0, 0.0, -1.0,//2
+      1.0, 0.0, 1.0,  //3
+      1.0, 0.0, -1.0,  //4
+      0.0, -1.0, 0.0,   //5
+    ];
+   arrays = {position:diamondVertexPos, 
+                 indices:diamondTriangleIndices,
+                     inColor:inColor,
+                       normal:diamondVertexNormals};
+   var diamondBuffer = twgl.createBufferInfoFromArrays(gl, arrays);
+  
+    var pyramidVertexPos = [
+    //top
+      0.0, 0.5, 0.0,    //0
+    //bottom square
+      -0.5, -0.5, 0.5,  //1
+      -0.5, -0.5, -0.5, //2
+      0.5, -0.5, 0.5,   //3
+      0.5, -0.5, -0.5   //4
+   ];  
+  var pyramidTriangleIndices = [
+    1,2,3, 2,4,3, 1,3,0, 3,4,0, 4,2,0, 1,0,2 
+  ];
+    var pyramidVertexNormals = [
+      0.0, 1.0, 0.0,   //0
+      -1.0, 0.0, 1.0, //1
+      -1.0, 0.0, -1.0,//2
+      1.0, 0.0, 1.0,  //3
+      1.0, 0.0, -1.0  //4
+    ];
+  arrays = {position:pyramidVertexPos, 
+                 indices:pyramidTriangleIndices,
+                     inColor:inColor,
+                       normal:pyramidVertexNormals};
+   var pyramidBuffer = twgl.createBufferInfoFromArrays(gl, arrays);
+  
+  
+  
+  
+  
+  
+  /////////////////////////////
+  //
+  //    MAIN DRAW FUNCTION
+  //
+  ////////////////////////////
+  
+  function draw() {
+	  // first, let's clear the screen
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.useProgram(shaders.program);	    
+  
+    if (control.selectedIndex === 0)
+      Tcamera = rotator.getViewMatrix();
+    else
+      Tcamera = drive();
+    Tmodel = m4.identity();
+    
+    var translate = [0,0,0];
+    var scale = [1,1,1];
+    var xAngle = [0,0,0];
+    var yAngle = [0,0,0];
+    var zAngle = [0,0,0];
+    inColor = [1.0,0.6,0.0];
+    
+    pushMatrix();
+    mat4.scale(Tmodel,Tmodel,[0.05*sliderScaleX.value,0.05*sliderScaleY.value,0.05*sliderScaleZ.value]);
+    mat4.translate(Tmodel,Tmodel,[sliderX.value*0.1,sliderY.value*0.1,sliderZ.value*0.1]);
+    
+    
+    if(checkbox.checked) {
+      pushMatrix();
+      mat4.scale(Tmodel,Tmodel,[5,5,5]);
+      if (view.selectedIndex === 0)
+        drawPerson();
+      else if (view.selectedIndex === 1){
+        rotateFromPiv([0,0,0],rad(counter*10),[0,1,0]);
+        mat4.translate(Tmodel,Tmodel,[5,0,0]);
+        rotate(rad(-90),[0,1,0])
+        drawTrain();
+      }
+      else if (view.selectedIndex === 2){
+        inColor = [0.0,0.5,0.0];
+        texture = true;
+        drawGround();
+        texture = false;
+        inColor = [1.0,0.6,0.0];
+      }
+      else if (view.selectedIndex === 3)
+        drawHouse();
+      else if (view.selectedIndex === 4)
+        drawHelicopter();
+      else if (view.selectedIndex === 5)
+        createBuffers('diamond');
+      else if (view.selectedIndex === 6)
+        createBuffers('octagon');
+      popMatrix();
+    }
+    
+    else {
+      pushMatrix();
+      mat4.scale(Tmodel,Tmodel,[5,5,5]);
+      //drawHelicopter();
+      //drawDiamond();
+      rotate(rad(90),[0,1,0]);
+      //drawOctagon();
+      //createBuffers('sphere');
+      popMatrix();
+      
+      pushMatrix();
+      world();
+      popMatrix();
+    }
+    popMatrix();
+    
+    //update
+    if(pattern)
+      counter+=0.1*slider2.value;
+    forward = 0;
+    window.requestAnimationFrame(draw);
+  }
+  
+  function world() {
+    pushMatrix();
+    
+    pushMatrix();
+    rotateFromPiv([0,0,0],rad(counter*10),[0,1,0]);
+    translate([10,2,0]);
+    drawPerson();
+    popMatrix();
+    
+    pushMatrix();
+    inColor = [0.0,0.5,0.0];
+    texture = true;
+    drawGround();
+    texture = false;
+    inColor = [1.0,0.6,0.0];
+    popMatrix();
+    
+    pushMatrix();
+    translate([0,5,0])
+    scale([3,3,3]);
+    drawHouse();
+    popMatrix();
+    
+    pushMatrix();
+    translate([20,15,30])
+    scale([5,10,5]);
+    drawHouse();
+    popMatrix();
+    
+    pushMatrix();
+    rotateFromPiv([1,1,1],rad(counter*10),[0,1,0]);
+    translate([20,7,0]);
+    rotate(rad(-90),[0,1,0])
+    scale([5,5,5]);
+    drawTrain();
+    popMatrix();
+    
+    pushMatrix();
+    rotateFromPiv([3,3,3],rad(counter*50),[0,1,0]);
+    translate([20,20,0]);
+    rotate(rad(-90),[0,1,0])
+    scale([2,2,2]);
+    drawHelicopter();
+    popMatrix();
+    
+    pushMatrix();
+    translate([-20,20,20]);
+    rotate(counter,[0,1,0]);
+    scale([4,4,4]);
+    createBuffers('diamond');
+    popMatrix();
+    
+    pushMatrix();
+    translate([-20,5,-20]);
+    scale([2,2,2]);
+    createBuffers('octagon');
+    popMatrix();
+    
+    popMatrix();
+  }
+  
+  function drawHelicopter() {
+    
+    //cockpit
+    pushMatrix();
+    translate([1,0,0]);
+    scale([1,1,1]);
+    createBuffers('sphere');
+    popMatrix();
+    
+    //blades
+    var rotateInit = [0,rad(90)];
+    for (var i = 0; i<rotateInit.length; i++) {
+      pushMatrix();
+      translate([0,1.25,0]);
+      rotate(counter+rotateInit[i],[0,1,0]);
+      scale([0.25,0.25,5])
+      rotate(rad(90),[1,0,0]);
+      createBuffers('cylinder');
+      popMatrix();
+    }
+    
+    //rails
+    coord = [[0,-1.5,1],[0,-1.5,-1]];
+    for (var i = 0; i<coord.length;i++) {
+      pushMatrix();
+      translate(coord[i])
+      scale([3,0.25,0.25]);
+      rotate(rad(90),[0,0,1]);
+      createBuffers('cylinder');
+      popMatrix();
+    }
+    
+    coord = [[0.5,-1,0.5],[-0.75,-1,0.5],[0.5,-1,-0.5],[-0.75,-1,-0.5]];
+    var rotations = [-45,-45,45,45];
+    for (var i = 0; i<coord.length;i++){
+      pushMatrix();
+      translate(coord[i]);
+      rotate(rad(rotations[i]),[1,0,0]);
+      scale([0.25,1.5,0.25])
+      createBuffers('cylinder');
+      popMatrix();
+    }
+    
+    //axle
+    pushMatrix();
+    translate([0,1,0]);
+    scale([0.25,1,0.25]);
+    createBuffers('cylinder');
+    popMatrix();
+    
+    pushMatrix();
+    scale([3,1,0.5]);
+    createBuffers('cube');
+    popMatrix();
+    
+    pushMatrix();
+    translate([-1.75,0.3,0]);
+    rotate(rad(-45),[0,0,1]);
+    scale([1.5,0.75,0.5]);
+    createBuffers('cube');
+    popMatrix();
+  }
+  function drawHouse() {
+    pushMatrix();
+    
+    pushMatrix();
+    translate([0,2.5,0]);
+    scale([3,2,3]);
+    createBuffers('pyramid');
+    popMatrix();
+    
+    pushMatrix();
+    translate([1,2.5,0]);
+    scale([0.5,2,0.5]);
+    createBuffers('cube');
+    popMatrix();
+    
+    inColor=[0.5,0.5,0.5];
+    for(i=0;i<5;i++) {
+      pushMatrix();
+      translate([1,2.5+(-(counter+i)*0.5)%5,0]);
+      scale([0.2,0.2,0.2]);
+      createBuffers('sphere');
+      popMatrix();
+    }
+    inColor = [1.0,0.6,0.0];
+    
+    coord = [-1.4,1.4];
+    for (var i = 0; i<2; i++) {
+      pushMatrix();
+      translate([coord[i],0,0]);
+      scale([0.3,3,3]);
+      createBuffers('cube');
+      popMatrix();
+    }
+    for (var i = 0; i<2; i++) {
+      pushMatrix();
+      translate([0,0,coord[i]]);
+      scale([3,3,0.3])
+      createBuffers('cube');
+      popMatrix();
+    }
+    
+    
+    popMatrix();
+  }
+  function drawGround() {
+    pushMatrix();
+    
+    pushMatrix();
+    translate([0,0,0]);
+    scale([100,100,100]);
+    createBuffers('plane');
+    popMatrix();
+    
+    popMatrix();
+  }
+  function drawPerson(speed) {
+    pushMatrix();
+    
+    //head
+    pushMatrix();
+      translate([0,1.25,0]);
+      scale([1,1,1]);
+      rotate(rad(0),[0,0,0]);
+      createBuffers("cube");
+    popMatrix();
+    
+    //body
+    pushMatrix();
+      translate([0,0,0]);
+      scale([1,1.75,0.5]);
+      rotate(rad(0),[0,0,0]);
+      createBuffers("cube");
+    popMatrix();
+    
+    //arms
+    coord = [0.75,-0.75];
+    var armRot = [rad(-70*Math.sin(counter*0.5)), rad(70*Math.sin(counter*0.5))]
+    for (var i = 0; i<coord.length; i++) {
+      pushMatrix();
+        mat4.translate(Tmodel,Tmodel,[coord[i],0.75,0]);
+        rotateFromPiv([0,0.75,0], armRot[i],[1,0,0]);
+        mat4.scale(Tmodel,Tmodel,[0.5,1.75,0.5]);
+        createBuffers("cube")
+      popMatrix();
+    }
+    
+    //legs
+    coord = [0.25,-0.25];
+    var legRot = [rad(70*Math.sin(counter*0.5)), rad(-70*Math.sin(counter*0.5))]
+    for (var i = 0; i<coord.length; i++) {
+      pushMatrix();
+        mat4.translate(Tmodel,Tmodel,[coord[i],-0.75,0]);
+        rotateFromPiv([0,0.75,0], legRot[i],[1,0,0]);
+        mat4.scale(Tmodel,Tmodel,[0.5,1.5,0.5]);
+        createBuffers("cube")
+      popMatrix();
+    }
+    
+    popMatrix();
+  }
+  
+  function drawTrain() {
+    pushMatrix();
+    
+    //front
+    pushMatrix();
+      scale([2,0.5,0.5])
+      rotate(rad(90),[0,0,1]);
+      createBuffers("cylinder");
+    popMatrix();
+    
+    //body
+    pushMatrix();
+      translate([1,0,0])
+      scale([0.5,0.5,0.5]);
+      rotate(rad(-90),[0,0,1])
+      createBuffers("truncatedCone");
+    popMatrix();
+    
+    //exhaust
+    pushMatrix();
+      translate([0.5,0.65,0])
+      scale([0.25,1,0.25]);
+      rotate(rad(180),[1,0,0]);
+      createBuffers("truncatedCone");
+    popMatrix();
+    
+    
+    inColor=[0.5,0.5,0.5];
+    for(i=0;i<5;i++) {
+      pushMatrix();
+      translate([0.5,1+(-(counter+i)*0.5)%5,0]);
+      scale([0.2,0.2,0.2]);
+      rotate(rad(180),[1,0,0]);
+      createBuffers('sphere');
+      popMatrix();
+    }
+    inColor = [1.0,0.6,0.0];
+    
+    //cockpit
+    pushMatrix();
+      translate([-1,0,0]);
+      scale([1,1,1]);
+      rotate(rad(0),[0,0,0]);
+      createBuffers("cube");
+    popMatrix();
+    
+    coord = [[-1.375,0.375],[-1.375,-0.375],[-0.625,0.375],[-0.625,-0.375]];
+    for (var i=0;i<coord.length;i++) {
+      pushMatrix();
+        translate([coord[i][0],0.75,coord[i][1]]);
+        scale([0.25,0.75,0.25]);
+        rotate(rad(0),[0,0,0]);
+        createBuffers("cube");
+      popMatrix();
+    }
+    
+    pushMatrix();
+      translate([-1,1,0]);
+      scale([1,0.25,1]);
+      rotate(rad(0),[0,0,0]);
+      createBuffers("cube");
+    popMatrix();
+    
+     pushMatrix();
+      translate([-1,1.375,0]);
+      scale([1,0.5,1]);
+      rotate(rad(0),[0,0,0]);
+      createBuffers("pyramid");
+    popMatrix();
+    
+    //wheels
+    coord = [[-0.75,0.6],[0.5,0.6],[-0.75,-0.6],[0.5,-0.6]];
+    for (i=0;i<coord.length;i++) {
+      pushMatrix();
+        translate([coord[i][0],-0.5,coord[i][1]]);
+        scale([0.5,0.5,0.1]);
+        rotate(rad(90),[1,0,0]);
+        createBuffers("cylinder");
+      popMatrix();
+    }
+    
+    popMatrix();
+  }
+  
+//   pushMatrix();
+//     translate([0,0,0]);
+//     scale([1,1,1]);
+//     rotate(rad(0),[0,0,0]);
+//     drawCylinder();
+//   popMatrix();
+  
+
+    
+  
+  function createBuffers(block) {
+    switch (block) {
+      case "truncatedCone":
+        buffers = truncatedConeBuffer;
+        break;
+      case "torus":
+        buffers = torusBuffer;
+        break;
+      case "plane":
+        buffers = planeBuffer;
+        break;
+      case "cresent":
+        buffers = cresentBuffer;
+        break;
+      case "disc":
+        buffers = discBuffer;
+        break;
+      case "sphere":
+        buffers = sphereBuffer;
+        break;
+      case "cube":
+        buffers = cubeBuffer;
+        break;
+      case "cylinder":
+        buffers = cylinderBuffer;
+        break;
+      case "pyramid":
+        buffers = pyramidBuffer;
+        break;
+      case "octagon":
+        buffers = octagonBuffer;
+        break;
+      case "diamond":
+        buffers = diamondBuffer;
+        break;
+    }
+    Tmc = m4.multiply(Tmodel,Tcamera);
+    Tmcp = m4.multiply(Tmc,Tprojection);
+    twgl.setUniforms(shaders,{transf : Tmcp,
+                               normalMatrix:m4.transpose(m4.inverse(Tmodel)),
+                                 time:counter*10,
+                                   patttern:pattern,
+                                         inColor:inColor,
+                                           texture:texture,
+                                             day:sliderDay.value});
+    twgl.setBuffersAndAttributes(gl,shaders,buffers);
+    twgl.drawBufferInfo(gl, gl.TRIANGLES, buffers);
+  }
+  
+  
+  
+  function drive() {
+    var eye = [x,y,z];
+    var target = [Math.sin(turn*0.1)*Math.cos(lift*0.1)+x,
+                  Math.sin(lift*0.1)+y,
+                  -Math.cos(turn*0.1)*Math.cos(lift*0.1)+z];
+    var up = [0,1,0];
+    x += Math.sin(turn*0.1)*forward*0.2*Math.cos(lift*0.1);
+    z += -Math.cos(turn*0.1)*forward*0.2*Math.cos(lift*0.1);
+    y += Math.sin(lift*0.1)*forward*0.2;
+    return m4.inverse(m4.lookAt(eye, target, up));
+  }
+  
+  function pushMatrix() {
+    matrixStack.push(m4.copy(Tmodel));
+  }
+  
+  function popMatrix() {
+    Tmodel = matrixStack.pop(Tmodel);
+  }
+  
+  function scale(scale) {
+    mat4.scale(Tmodel,Tmodel,scale);
+  }
+  
+  function translate(translate) {
+    mat4.translate(Tmodel,Tmodel,translate);
+  }
+  
+  function rotate(rotate,axis) {
+    mat4.rotate(Tmodel,Tmodel,rotate,axis);
+  }
+  
+  function rotateFromPiv(piv, rotate, axis) {
+    mat4.rotate(Tmodel,Tmodel,rotate,axis);
+    var temp = mat4.create();
+    mat4.translate(temp,temp,piv);
+    mat4.invert(temp,temp);
+    mat4.multiply(Tmodel,Tmodel,temp);
+  }
+  function rad(degrees) {
+    return (degrees)/180*Math.PI;
+  }
+  var lastDownTarget;
+    document.addEventListener('mousedown', function(e) {
+        lastDownTarget = event.target;
+    }, false);
+
+    document.addEventListener('keydown', function(e) {
+        if(lastDownTarget == canvas) {
+          
+			//====================
+			//	THE W KEY
+			//====================
+			if (e.keyCode == 87) {
+                  forward+=1;
+            }
+
+			//====================
+			//	THE S KEY
+			//====================
+			if (e.keyCode == 83) {
+                  forward-=1;
+            }
+
+			//====================
+			//	THE A KEY
+			//====================
+			if (e.keyCode == 65) {
+                turn-=1;
+            }
+
+			//====================
+			//	THE D KEY
+			//====================
+			if (e.keyCode == 68) {
+                  turn+=1;
+            }
+          
+			//====================
+			//	THE SHIFT KEY
+			//====================
+			if (e.keyCode == 16) {
+                  y+=0.1;
+            }
+          
+			//====================
+			//	THE CONTROL KEY
+			//====================
+			if (e.keyCode == 17) {
+                  y-=0.1;
+            }
+          
+            
+			//====================
+			//	THE UP KEY
+			//====================
+			if (e.keyCode == 38 && (control.selectedIndex === 2)) {
+                  lift+=1;
+            }
+          
+			//====================
+			//	THE DOWN KEY
+			//====================
+			if (e.keyCode == 40 && (control.selectedIndex === 2)) {
+                  lift-=1;
+            }
+			//====================
+			//	THE RIGHT KEY
+			//====================
+			if (e.keyCode == 39 && (control.selectedIndex === 2)) {
+                  turn+=1;
+            }
+			//====================
+			//	THE LEFT KEY
+			//====================
+			if (e.keyCode == 37 && (control.selectedIndex === 2)) {
+                  turn-=1;
+            }
+        }
+    }, false);
+reset.addEventListener('click', function(event) {
+
+    slider2.value = -1;
+    sliderX.value =0;
+    sliderY.value=0;
+    sliderZ.value=0;
+    sliderScaleX.value=5;
+    sliderScaleY.value=5;
+    sliderScaleZ.value=5;
+    rotator.setViewDistance(10);
+    forward = 0;
+    turn = 0;
+    y=0;
+    lift = 0;
+}
+                  );                
+togglePattern.addEventListener('click', function(event) {
+
+    if (pattern)
+      pattern = false;
+      else
+        pattern = true;}
+                  );                         
+                  
+/** This is high-level function.
+ * It must react to delta being more/less than zero.
+ */
+function handle(delta) {
+        if (delta < 0)
+		rotator.setViewDistance(rotator.getViewDistance()+0.5);
+        else
+		rotator.setViewDistance(rotator.getViewDistance()-0.5);
+}
+
+/** Event handler for mouse wheel event.
+ */
+function wheel(event){
+        var delta = 0;
+        if (!event) /* For IE. */
+                event = window.event;
+        if (event.wheelDelta) { /* IE/Opera. */
+                delta = event.wheelDelta/120;
+        } else if (event.detail) { /** Mozilla case. */
+                /** In Mozilla, sign of delta is different than in IE.
+                 * Also, delta is multiple of 3.
+                 */
+                delta = -event.detail/3;
+        }
+        /** If delta is nonzero, handle it.
+         * Basically, delta is now positive if wheel was scrolled up,
+         * and negative, if wheel was scrolled down.
+         */
+        if (delta)
+                handle(delta);
+        /** Prevent default actions caused by mouse wheel.
+         * That might be ugly, but we handle scrolls somehow
+         * anyway, so don't bother here..
+         */
+        if (event.preventDefault)
+                event.preventDefault();
+	event.returnValue = false;
+}
+
+/** Initialization code. 
+ * If you use your own event management code, change it as required.
+ */
+if (window.addEventListener)
+        /** DOMMouseScroll is for mozilla. */
+        window.addEventListener('DOMMouseScroll', wheel, false);
+/** IE/Opera. */
+window.onmousewheel = document.onmousewheel = wheel;
+ /**
+ *  A SimpleRotator can be used to implement rotation by mouse
+ *  (or touch) WebGL.  In this style of rotation, the y-axis
+ *  is always vertical, with the positive direction pointing
+ *  upwards in the view.  Dragging the mouse left and right
+ *  rotates the view about the y-axis.  Dragging it up and down
+ *  rotates the view about the x-axis, with the angle of rotation
+ *  about the x-axis limited to the range -85 to 85.
+ *
+ *  NOTE: No error checking of parameters is done!
+ *
+ * Functions defined for an object, rotator, of type SimpleRotator:
+ *
+ *    rotator.getViewMatrix() -- returns an array of 16 numbers representing
+ *       the view matrix corresponding to the current rotation.  The
+ *       matrix is in column-matrix order (ready for use with glMatrix or
+ *       gl.uniformMatrix4fv).  The view matrix takes into account the
+ *       view distance and the center of view.
+ *    rotator.setXLimit( d ) -- sets the range of possible rotations
+ *       about the x-axis.  The paramter must be a non-negative number,
+ *       and the value is clamped to the range 0 to 85.  The allowed range
+ *       of rotation angles is from -d to d degrees.  If the value is zero
+ *       only rotation about the y-axis is allowed.  Initial value is 85.
+ *    rotation.getXLimit() -- returns the current limit
+ *    rotation.setRotationCenter( vector ) -- Sets the center of rotation.
+ *       The parameter must be an array of (at least) three numbers.  The
+ *       view is rotated about this point.  Usually, you want the rotation
+ *       center to be the point that appears at the middle of the canvas,
+ *       but that is not a requirement.  The initial value is effectively
+ *       equal to [0,0,0].
+ *    rotation.getRotationCenter() -- returns the current value.
+ *    rotation.setAngles( rotateY, rotateX ) -- sets the angles of rotation
+ *       about the y- and x- axes.  The values must be numbers and are
+ *       given in degrees.  The limit on the range of x rotations is enforced.
+ *       If the callback function is defined, it is called.
+ *    rotation.setViewDistance(dist) -- Sets the view distance to dist, which
+ *       must be a number.
+ *    rotation.getViewDistance() -- returns the current value.
+ *
+ * @param canvas must be a DOM element for a canvas.  A mouse
+ *     listener and a touch listener are installed on the canvas.
+ *     This is a required parameter.
+ * @param callback if present, must be a function.  The function,
+ *     if given, is called when the view changes.  Typically, it
+ *     it would be a function that renders the image in the canvas,
+ *     or possibly a function that renders the image only if no
+ *     animation is running.
+ * @param viewDistance if present, must be a number.  Gives the
+ *     distance of the viewer from the center of rotation, which
+ *     is ordinarily the origin.  If not present, the distance is
+ *     0, which can be appropriate for an orthogonal projection.
+ * @param rotY if present, must be a number.  Gives the initial rotation
+ *     about the y-axis, in degrees. If not present, the default is zero.
+ * @param rotX if present, must be a number.  Gives the initial rotation
+ *     about the x-axis, in degrees. If not present, the default is zero.
+ */
+function SimpleRotator(canvas, callback, viewDistance, rotY, rotX) {
+    canvas.addEventListener("mousedown", doMouseDown, false);
+    canvas.addEventListener("touchstart", doTouchStart, false);
+    var rotateX = (rotX === undefined)? 0 : rotX;
+    var rotateY = (rotY === undefined)? 0 : rotY;
+    var xLimit = 85;
+    var center;
+    var degreesPerPixelX = 90/canvas.height;
+    var degreesPerPixelY = 180/canvas.width; 
+    this.getXLimit = function() {
+        return xLimit;
+    }
+    this.setXLimit = function(limitInDegrees) {
+        xLimit = Math.min(85,Math.max(0,limitInDegrees));
+    }
+    this.getRotationCenter = function() {
+        return (center === undefined) ? [0,0,0] : center;
+    }
+    this.setRotationCenter = function(rotationCenter) {
+        center = rotationCenter;
+    }
+    this.setAngles = function( rotY, rotX ) {
+        rotateX = Math.max(-xLimit, Math.min(xLimit,rotX));
+        rotateY = rotY;
+        if (callback) {
+            callback();
+        }
+    }
+    this.setViewDistance = function( dist ) {
+        viewDistance = dist;
+    }
+    this.getViewDistance = function() {
+        return (viewDistance === undefined)? 0 : viewDistance;
+    }
+    this.getViewMatrix = function() {
+        var cosX = Math.cos(rotateX/180*Math.PI);
+        var sinX = Math.sin(rotateX/180*Math.PI);
+        var cosY = Math.cos(rotateY/180*Math.PI);
+        var sinY = Math.sin(rotateY/180*Math.PI);
+        var mat = [  // The product of rotation by rotationX about x-axis and by rotationY about y-axis.
+            cosY, sinX*sinY, -cosX*sinY, 0,
+            0, cosX, sinX, 0,
+            sinY, -sinX*cosY, cosX*cosY, 0,
+            0, 0, 0, 1
+        ];
+        if (center !== undefined) {  // multiply on left by translation by rotationCenter, on right by translation by -rotationCenter
+            var t0 = center[0] - mat[0]*center[0] - mat[4]*center[1] - mat[8]*center[2];
+            var t1 = center[1] - mat[1]*center[0] - mat[5]*center[1] - mat[9]*center[2];
+            var t2 = center[2] - mat[2]*center[0] - mat[6]*center[1] - mat[10]*center[2];
+            mat[12] = t0;
+            mat[13] = t1;
+            mat[14] = t2;
+        }
+        if (viewDistance !== undefined) {  // multipy on left by translation by (0,0,-viewDistance)
+            mat[14] -= viewDistance;
+        }
+        return mat;
+    }
+    var prevX, prevY;  // previous position, while dragging
+    var dragging = false;
+    var touchStarted = false;
+    function doMouseDown(evt) {
+        if (dragging) {
+            return;
+        }
+        dragging = true;
+        document.addEventListener("mousemove", doMouseDrag, false);
+        document.addEventListener("mouseup", doMouseUp, false);
+        var r = canvas.getBoundingClientRect();
+        prevX = evt.clientX - r.left;
+        prevY = evt.clientY - r.top;
+    }
+    function doMouseDrag(evt) {
+        if (!dragging) {
+            return; 
+        }
+        var r = canvas.getBoundingClientRect();
+        var x = evt.clientX - r.left;
+        var y = evt.clientY - r.top;
+        var newRotX = rotateX + degreesPerPixelX * (y - prevY);
+        var newRotY = rotateY + degreesPerPixelY * (x - prevX);
+        newRotX = Math.max(-xLimit, Math.min(xLimit,newRotX));
+        prevX = x;
+        prevY = y;
+        if (newRotX != rotateX || newRotY != rotateY) {
+            rotateX = newRotX;
+            rotateY = newRotY;
+            if (callback) {
+                callback();
+            }
+        }
+    }
+    function doMouseUp(evt) {
+        if (!dragging) {
+            return;
+        }
+        dragging = false;
+        document.removeEventListener("mousemove", doMouseDrag, false);
+        document.removeEventListener("mouseup", doMouseUp, false);
+    }
+    function doTouchStart(evt) {
+        if (evt.touches.length != 1) {
+           doTouchCancel();
+           return;
+        }
+        evt.preventDefault();
+        var r = canvas.getBoundingClientRect();
+        prevX = evt.touches[0].clientX - r.left;
+        prevY = evt.touches[0].clientY - r.top;
+        canvas.addEventListener("touchmove", doTouchMove, false);
+        canvas.addEventListener("touchend", doTouchEnd, false);
+        canvas.addEventListener("touchcancel", doTouchCancel, false);
+        touchStarted = true;
+    }
+    function doTouchMove(evt) {
+        if (evt.touches.length != 1 || !touchStarted) {
+           doTouchCancel();
+           return;
+        }
+        evt.preventDefault();
+        var r = canvas.getBoundingClientRect();
+        var x = evt.touches[0].clientX - r.left;
+        var y = evt.touches[0].clientY - r.top;
+        var newRotX = rotateX + degreesPerPixelX * (y - prevY);
+        var newRotY = rotateY + degreesPerPixelY * (x - prevX);
+        newRotX = Math.max(-xLimit, Math.min(xLimit,newRotX));
+        prevX = x;
+        prevY = y;
+        if (newRotX != rotateX || newRotY != rotateY) {
+            rotateX = newRotX;
+            rotateY = newRotY;
+            if (callback) {
+                callback();
+            }
+        }
+    }
+    function doTouchEnd(evt) {
+        doTouchCancel();
+    }
+    function doTouchCancel() {
+        if (touchStarted) {
+           touchStarted = false;
+           canvas.removeEventListener("touchmove", doTouchMove, false);
+           canvas.removeEventListener("touchend", doTouchEnd, false);
+           canvas.removeEventListener("touchcancel", doTouchCancel, false);
+        }
+    }
+}
+
+  draw();
+}
+window.onload = setup;
+  
+
+</script>
+</body>
+  <script id="vs" type="notjs">
+  attribute vec3 position;
+  attribute vec4 normal;
+  varying vec3 fNormal;
+  uniform mat4 normalMatrix;
+  uniform vec3 inColor;
+  varying vec3 outColor;
+  uniform mat4 transf;
+  uniform float time;
+  varying vec3 localPos;
+  
+  void main(void) {
+  fNormal = normalize(normalMatrix*normalize(normal)).xyz;
+  //fNormal = normalize(normalize(normal)).xyz;
+    gl_Position = transf * vec4(position, 1.0);
+    localPos = position;
+    outColor = inColor;
+  }
+</script>
+<script id="fs" type="notjs">
+  precision highp float;
+  varying vec3 outColor;
+  varying vec3 fNormal;
+  varying vec3 localPos;
+  uniform float time;
+  uniform float texture;
+  uniform float day;
+  
+float pulse(float val, float dst) {
+  return floor(mod(val*dst,1.0)+0.5);
+}
+  
+  const float Ka         = 0.5;
+  const float Kd         = 0.7;
+  const float Ks         = 1.0;
+  const float sExp       = 32.0;
+  vec3  lightPos   = vec3(day,10.0,0.0);
+  vec3  lightCol   = vec3(1.0,1.0,1.0);
+  vec3  objectCol  = vec3(1.0,0.6,0.0); // yellow-ish orange
+  void main(void) {
+  
+  objectCol = outColor;
+  vec3 l=normalize(lightPos-localPos);
+  vec3 n=normalize(fNormal);
+  vec3 e=normalize(-localPos);
+  vec3 h=normalize(e+l);
+  
+  vec3 cpos = localPos;
+  
+  
+  vec3 ambientColor  = Ka*objectCol;
+  vec3 diffuseColor  = Kd*objectCol*dot(l,n);
+  vec3 specularColor = Ks*lightCol*pow(max(dot(h,n),0.0),sExp);
+  
+ 
+    if(texture==1.0){
+      vec3 color = vec3(pulse(cpos.z,2.0),  pulse((cpos.x+time*0.005),2.0),pulse(cpos.z,1.0));
+      gl_FragColor=vec4((color+outColor)*(ambientColor+diffuseColor+specularColor),1.0);
+    }
+    else {
+      gl_FragColor = vec4(ambientColor+diffuseColor+specularColor, 1.0);
+     }
+    
+  
+  }
+</script>
+  <br/>
+  <select id="control">
+    <option value="arcBall">ArcBall</option>
+    <option value="drive">Drive</option>
+    <option value="fly">Fly</option>
+  </select>
+  <button id="reset" type="button">Reset</button>
+  <!--
+  <button id="strokes" type="button">Toggle Strokes</button>
+  
+  <button id="shading" type="button">Toggle Shading</button>
+  -->
+  <button id="pattern" type="button">&#10074;&#10074;/&#9658;</button>
+  <input type="checkbox" id = "examine">Examine
+  <select id="view">
+    <option value="person">Person</option>
+    <option value="train">Train</option>
+    <option value="ground">Ground</option>
+    <option value="house">House</option>
+    <option value="helicopter">Helicopter</option>
+    <option value="diamond">Diamond</option>
+    <option value="octagon">Octagon</option>
+  </select>
+  <br/>
+  <b>Pan Using Mouse and Mouse Wheel to Zoom</b><br/>
+   Speed<input id="slider2" type="range" min="-10" max="10"/>
+   TimeOfDay<input id="day" type="range" min="-100" max="100"/> <br/>
+  <br/><b>Translate</b> <br/>
+  X<input id="sliderX" type="range" min="-100" max="100"/>
+  Y<input id="sliderY" type="range" min="-100" max="100"/>
+  Z<input id="sliderZ" type="range" min="-100" max="100"/> <br/>
+  <br/><b>Scale</b> <br/>
+  X<input id="sliderScaleX" type="range" min="0" max="10"/>
+  Y<input id="sliderScaleY" type="range" min="0" max="10"/>
+  Z<input id="sliderScaleZ" type="range" min="0" max="10"/> <br/>
+  <p>
+    Note: Lag often occurs during the animations. </br>
+    This program utilized hiearchical modeling, for example you could type drawCylinder() multiple time but with different translations, rotations, scalings, etc. and the output will display will cylinders with those respective transformations. In addition, the code has a transformation stack implemented similar to how context.save() and context.restore() funtions.
+    Code used for accessing WebGL with TWGL: <a href="http://jsbin.com/yadeso/15/edit?html,js,output">here</a></br>
+    Code used for camera (view) transform: <a href="https://github.com/igoralves98/raspberry-pi4j-samples/blob/274a745ba68a1b4226b8b61196a80168fcf6c759/RasPISamples/node/leapmotion.webgl.html">here</a></br>
+    Code used for mouse wheel inputs: <a href="http://www.adomas.org/javascript-mouse-wheel/">here</a>
+  </p>
+</html>
