@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="description" content="Graphics Town">
+<meta name="WebGL" content="WebGL">
+  <meta charset="utf-8">
+  <title>JS Bin</title>
+  <script src="https://graphics.cs.wisc.edu/JS/twgl-full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.3.2/gl-matrix.js"></script>
+</head>
+<body onload="start()">
+<img id="sky" width="0" height="0" src="http://www.aurorasentinel.com/asuplads/Fotolia-64898668-Subscription-Monthly-L.jpg">
+<canvas id="mycanvas" width="400" height="400"></canvas>
+</body>
+  <script src="main.js"></script>
+  <script id="vs" type="notjs">
+  attribute vec3 position;
+  attribute vec4 normal;
+  attribute vec2 texcoord;
+  varying vec3 fNormal;
+  uniform mat4 normalMatrix;
+  uniform vec3 inColor;
+  varying vec3 outColor;
+  uniform mat4 transf;
+  uniform float time;
+  varying vec3 localPos;
+  varying vec2 ftexcoord;
+  
+  void main(void) {
+  fNormal = normalize(normalMatrix*normalize(normal)).xyz;
+  //fNormal = normalize(normalize(normal)).xyz;
+    gl_Position = transf * vec4(position, 1.0);
+    localPos = position;
+    outColor = inColor;
+    ftexcoord = texcoord;
+  }
+</script>
+<script id="fs" type="notjs">
+  precision highp float;
+  varying vec3 outColor;
+  varying vec3 fNormal;
+  varying vec3 localPos;
+  uniform float time;
+  uniform float day;
+  varying vec2 ftexcoord;
+  uniform sampler2D tex;
+  uniform float skyBox;
+  
+float pulse(float val, float dst) {
+  return floor(mod(val*dst,1.0)+0.5);
+}
+  
+  const float Ka         = 0.8;
+  const float Kd         = 0.7;
+  const float Ks         = 1.0;
+  const float sExp       = 32.0;
+  vec3  lightPos   = vec3(day,10.0,0.0);
+  vec3  lightCol   = vec3(1.0,1.0,1.0);
+  vec3  objectCol  = vec3(1.0,0.6,0.0); // yellow-ish orange
+  void main(void) {
+  
+  objectCol = outColor;
+  vec3 l=normalize(lightPos-localPos);
+  vec3 n=normalize(fNormal);
+  vec3 e=normalize(-localPos);
+  vec3 h=normalize(e+l);
+  
+  vec3 cpos = localPos;
+  
+  
+  vec3 ambientColor  = Ka*objectCol;
+  vec3 diffuseColor  = Kd*objectCol*dot(l,n);
+  vec3 specularColor = Ks*lightCol*pow(max(dot(h,n),0.0),sExp);
+  
+ 
+//      vec3 color = vec3(pulse(cpos.z,2.0),  pulse((cpos.x+time*0.005),2.0),pulse(cpos.z,1.0));
+//      gl_FragColor=vec4((color+outColor)*(ambientColor+diffuseColor+specularColor),1.0);
+ 
+      vec4 texColor = texture2D(tex,ftexcoord);
+      gl_FragColor = vec4(texColor.xyz*(ambientColor+diffuseColor+specularColor), texColor.a);
+      //gl_FragColor = vec4(texColor.xyz,texColor.a);
+      
+      //gl_FragColor = vec4(ambientColor+diffuseColor+specularColor, 1.0);
+    
+       if (skyBox == 1.0){
+        gl_FragColor = vec4(texColor.xyz*ambientColor, texColor.a);
+       }
+  }
+</script>
+  <br/>
+  <select id="control">
+    <option value="arcBall">ArcBall</option>
+    <option value="drive">Drive</option>
+    <option value="fly">Fly</option>
+  </select>
+  <button id="reset" type="button">Reset</button>
+  <!--
+  <button id="strokes" type="button">Toggle Strokes</button>
+  
+  <button id="shading" type="button">Toggle Shading</button>
+  -->
+  <button id="pattern" type="button">&#10074;&#10074;/&#9658;</button>
+  <input type="checkbox" id = "examine">Examine
+  <select id="view">
+    <option value="person">Person</option>
+    <option value="train">Train</option>
+    <option value="ground">Ground</option>
+    <option value="house">House</option>
+    <option value="helicopter">Helicopter</option>
+    <option value="diamond">Diamond</option>
+    <option value="octagon">Octagon</option>
+    <option value="sign">Sign</option>
+    <option value="plane">Plane</option>
+  </select>
+  <br/>
+  <b>Pan Using Mouse and Mouse Wheel to Zoom</b><br/>
+   Speed<input id="slider2" type="range" min="-10" max="10"/>
+   TimeOfDay<input id="day" type="range" min="-100" max="100"/> <br/>
+  <br/><b>Translate</b> <br/>
+  X<input id="sliderX" type="range" min="-100" max="100"/>
+  Y<input id="sliderY" type="range" min="-100" max="100"/>
+  Z<input id="sliderZ" type="range" min="-100" max="100"/> <br/>
+  <br/><b>Scale</b> <br/>
+  X<input id="sliderScaleX" type="range" min="0" max="10"/>
+  Y<input id="sliderScaleY" type="range" min="0" max="10"/>
+  Z<input id="sliderScaleZ" type="range" min="0" max="10"/> <br/>
+  <p>
+    Note: Lag often occurs during the animations. </br>
+    This program utilized hiearchical modeling, for example you could type drawCylinder() multiple time but with different translations, rotations, scalings, etc. and the output will display will cylinders with those respective transformations. In addition, the code has a transformation stack implemented similar to how context.save() and context.restore() funtions.
+    Code used for accessing WebGL with TWGL: <a href="http://jsbin.com/yadeso/15/edit?html,js,output">here</a></br>
+    Code used for camera (view) transform: <a href="https://github.com/igoralves98/raspberry-pi4j-samples/blob/274a745ba68a1b4226b8b61196a80168fcf6c759/RasPISamples/node/leapmotion.webgl.html">here</a></br>
+    Code used for mouse wheel inputs: <a href="http://www.adomas.org/javascript-mouse-wheel/">here</a>
+  </p>
+</html>
