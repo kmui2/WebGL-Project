@@ -1,4 +1,26 @@
+var checkersTex, dogTex, apartmentTex, bricksTex, roofTex, grassTex, backgroundTex, steelTex, mirrorTex, boulderTex, faceTex, bodyTex, snakeTex, topTex, leftTex, rightTex, centerTex, bottomTex, farRightTex;
 
+function initOrigTex() {
+  checkersTex = initTex("checkers");
+  dogTex = initTex("dog");
+  apartmentTex = initTex("apartment");
+  bricksTex = initTex("bricks");
+  roofTex = initTex("roof");
+  grassTex = initTex("grass");
+  backgroundTex = initTex("background");
+  steelTex = initTex("steel");
+  mirrorTex = initTex("mirror");
+  boulderTex = initTex("boulder");
+  faceTex = initTex("face");
+  bodyTex = initTex("body");
+  snakeTex = initTex("snake");
+  topTex = initTex("top");
+  leftTex = initTex("left");
+  rightTex = initTex("right");
+  centerTex = initTex("center");
+  bottomTex = initTex("bottom");
+  farRightTex = initTex("farRight");
+}
 function origTex(texName,image) {
     
      switch(texName) {
