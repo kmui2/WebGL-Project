@@ -605,7 +605,7 @@ function createBuffers(block, sky) {
     twgl.setUniforms(shaders,{transf : Tmcp,
                                normalMatrix:m4.transpose(m4.inverse(Tmodel)),
                                  time:counter*10,
-                                   patttern:pattern,
+                                   patttern:play,
                                          inColor:inColor,
                                              day:sliderDay.value,
                                                tex: texture,

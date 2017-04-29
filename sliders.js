@@ -1,7 +1,7 @@
 
 var slider2, sliderDay, sliderX, sliderY, sliderZ, sliderScaleX, sliderScaleY, sliderScaleZ;  
 
-var control, view, togglePattern, reset, checkbox;
+var control, view, togglePlay, reset, checkbox;
 
 function initControls () {
 
@@ -12,7 +12,7 @@ function initControls () {
       view = document.getElementById('view');
 
       //pattern is actually the pause/play button
-      togglePattern = document.getElementById('pattern');
+      togglePlay = document.getElementById('play');
       reset = document.getElementById('reset');
 
 
