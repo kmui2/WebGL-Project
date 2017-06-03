@@ -60,6 +60,15 @@ function draw() {
     if (play)
         counter += 0.1 * slider2.value;
 //    forward = 0;
+   
+
+   
+//    window.addEventListener('resize', ()=> {
+//        width = window.innerWidth;
+//        height = window.innerHeight;
+////        canvas.style.height = height+'px';
+//        canvas.width = width;
+//        canvas.height = height;});
     window.requestAnimationFrame(draw);
 }
 

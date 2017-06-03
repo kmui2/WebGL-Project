@@ -6,6 +6,9 @@ function setup() {
     // first we need to get the canvas and make an OpenGL context
     // in practice, you need to do error checking
     canvas = document.getElementById("mycanvas");
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 100;
     gl = twgl.getWebGLContext(canvas);
     m4 = twgl.m4;
     v3 = twgl.v3;
