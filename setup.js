@@ -1,19 +1,10 @@
 
 
-function setup() {
-    "use strict";
-
-    // first we need to get the canvas and make an OpenGL context
-    // in practice, you need to do error checking
-    canvas = document.getElementById("mycanvas");
+function setup() {    
+//    canvas.width = window.innerWidth;
+//    canvas.height = window.innerHeight;
     
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 100;
-    gl = twgl.getWebGLContext(canvas);
-    m4 = twgl.m4;
-    v3 = twgl.v3;
-    p = twgl.primitives;
-
+    //camera options
     forward = 0;
     turn = 0;
     lift = 0;
@@ -21,43 +12,45 @@ function setup() {
     y = 0;
     z = 10;
 
+    //variables
     counter = 0;
     time = 0.0;
     play = true;
-
-
+    
+    //Matricies
     Tprojection = m4.perspective(Math.PI / 3, 1, 1, 400);
     matrixStack = [];
     Tmc = m4.identity();
     Tmodel = m4.identity();
+    
     rotator = new SimpleRotator(canvas);
     rotator.setViewDistance(10);
     inColor = [1.0, 0.0, 0.0]
 
+    //add controls on html
     initControls();
 
+    //WebGL options
+    shaders = twgl.createProgramInfo(gl, ["vs", "fs"]); 
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.useProgram(shaders.program);
 
-
-    // with twgl, the shaders get moved to the html file
-    shaders = twgl.createProgramInfo(gl, ["vs", "fs"]); // let's define the vertex positions
-
+    //add primitives
     initPrimitives();
 
+    //add default textures
     initOrigTex();
 
-    texture = checkersTex;
+//    texture = checkersTex;
 
-
-
-
-    /** Initialization code.
-     * If you use your own event management code, change it as required.
-     */
+    //add mousewheel event listener
     if (window.addEventListener)
-    /** DOMMouseScroll is for mozilla. */
         window.addEventListener('DOMMouseScroll', wheel, false);
-    /** IE/Opera. */
     window.onmousewheel = document.onmousewheel = wheel;
+    
     events();
     draw();
 }
